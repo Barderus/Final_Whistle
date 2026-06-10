@@ -1,4 +1,5 @@
 const GROUP_STAGE_PATTERN = /^Group /;
+const DISPLAY_TIME_ZONE = "America/Chicago";
 
 export function isGroupStage(stage) {
   return GROUP_STAGE_PATTERN.test(stage);
@@ -8,11 +9,26 @@ export function isKnockoutStage(stage) {
   return !isGroupStage(stage);
 }
 
+export function isPlaceholderTeam(team) {
+  return (
+    /^(?:UEFA|FIFA)\s+\w+$/i.test(team) ||
+    /^(?:W|L)\d+$/i.test(team) ||
+    /^\d[A-L]+$/i.test(team)
+  );
+}
+
+export function isMatchUnlocked(match) {
+  return (
+    !isPlaceholderTeam(match.team1) && !isPlaceholderTeam(match.team2)
+  );
+}
+
 export function formatMatchDate(startTime) {
   return new Intl.DateTimeFormat(undefined, {
     weekday: "short",
     month: "short",
     day: "numeric",
+    timeZone: DISPLAY_TIME_ZONE,
   }).format(new Date(startTime));
 }
 
@@ -20,6 +36,7 @@ export function formatMatchTime(startTime) {
   return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit",
+    timeZone: DISPLAY_TIME_ZONE,
     timeZoneName: "short",
   }).format(new Date(startTime));
 }

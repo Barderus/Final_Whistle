@@ -276,6 +276,14 @@ select {
   font-weight: 600;
 }
 
+.schedule-summary {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: right;
+}
+
 .match-grid,
 .friend-grid {
   display: grid;
@@ -294,6 +302,24 @@ select {
 
 .match-card {
   padding: 22px;
+}
+
+.match-card.is-disabled {
+  border-color: #c9cbc5;
+  color: #7a817d;
+  background: #e7e7e2;
+  box-shadow: none;
+}
+
+.match-card.is-disabled .match-meta,
+.match-card.is-disabled .teams,
+.match-card.is-disabled .match-number {
+  color: #7a817d;
+}
+
+.match-card.is-disabled .stage-pill,
+.match-card.is-disabled .locked-prediction {
+  background: #d7d8d3;
 }
 
 .match-card-header,
@@ -338,6 +364,11 @@ select {
 .lock-status.is-locked {
   color: #7f2e16;
   background: #ffe0d5;
+}
+
+.lock-status.is-unavailable {
+  color: #5f6561;
+  background: #d7d8d3;
 }
 
 .match-meta {
@@ -607,6 +638,10 @@ footer p {
 
   .section-heading {
     align-items: flex-start;
+  }
+
+  .schedule-summary {
+    text-align: left;
   }
 
   .match-meta {

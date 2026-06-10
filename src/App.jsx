@@ -5,7 +5,11 @@ import MatchCard from "./components/MatchCard";
 import MatchFilters from "./components/MatchFilters";
 import Navbar from "./components/Navbar";
 import { parseMatchesCsv } from "./utils/csv";
-import { isGroupStage, isKnockoutStage } from "./utils/matches";
+import {
+  isGroupStage,
+  isKnockoutStage,
+  isPlaceholderTeam,
+} from "./utils/matches";
 
 const emptyFilters = {
   stage: "",
@@ -51,7 +55,9 @@ export default function App() {
     () =>
       [
         ...new Set(
-          matches.flatMap((match) => [match.team1, match.team2]),
+          matches
+            .flatMap((match) => [match.team1, match.team2])
+            .filter((team) => !isPlaceholderTeam(team)),
         ),
       ].sort(),
     [matches],
@@ -191,10 +197,13 @@ export default function App() {
                   </h2>
                 </div>
                 {status === "ready" && (
-                  <span className="match-count">
-                    {visibleMatches.length}{" "}
-                    {visibleMatches.length === 1 ? "match" : "matches"}
-                  </span>
+                  <div className="schedule-summary">
+                    <span>Chicago time (CDT, UTC-5)</span>
+                    <span className="match-count">
+                      {visibleMatches.length}{" "}
+                      {visibleMatches.length === 1 ? "match" : "matches"}
+                    </span>
+                  </div>
                 )}
               </div>
               {renderScheduleContent()}

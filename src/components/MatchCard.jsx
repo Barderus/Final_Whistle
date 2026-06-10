@@ -2,6 +2,7 @@ import {
   formatMatchDate,
   formatMatchTime,
   isMatchLocked,
+  isMatchUnlocked,
 } from "../utils/matches";
 import PredictionForm from "./PredictionForm";
 
@@ -12,16 +13,29 @@ export default function MatchCard({
   readOnly = false,
 }) {
   const locked = isMatchLocked(match.start_time);
+  const unlocked = isMatchUnlocked(match);
+  const statusLabel = locked
+    ? "Locked"
+    : unlocked
+      ? "Open"
+      : "Waiting on teams";
 
   return (
-    <article className="match-card">
+    <article
+      aria-disabled={!unlocked}
+      className={`match-card ${!unlocked ? "is-disabled" : ""}`}
+    >
       <div className="match-card-header">
         <div>
           <span className="match-number">Match {match.match_number}</span>
           <span className="stage-pill">{match.stage}</span>
         </div>
-        <span className={`lock-status ${locked ? "is-locked" : ""}`}>
-          {locked ? "Locked" : "Open"}
+        <span
+          className={`lock-status ${
+            locked ? "is-locked" : !unlocked ? "is-unavailable" : ""
+          }`}
+        >
+          {statusLabel}
         </span>
       </div>
 
@@ -39,7 +53,11 @@ export default function MatchCard({
         <strong>{match.team2}</strong>
       </div>
 
-      {locked || readOnly ? (
+      {!unlocked ? (
+        <div className="locked-prediction">
+          <span>Predictions open when both teams are confirmed.</span>
+        </div>
+      ) : locked || readOnly ? (
         <div className="locked-prediction">
           {prediction?.team1Score !== "" &&
           prediction?.team1Score !== undefined &&
