@@ -63,7 +63,9 @@ export default function App() {
   useEffect(() => {
     async function loadLocalMatches() {
       try {
-        const response = await fetch("/matches.csv");
+        const response = await fetch(
+          `${import.meta.env.BASE_URL}matches.csv`,
+        );
 
         if (!response.ok) {
           throw new Error("The match schedule could not be loaded.");
