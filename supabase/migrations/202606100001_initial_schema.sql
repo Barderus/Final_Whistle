@@ -105,11 +105,6 @@ begin
   values (new.id, requested_name);
 
   return new;
-exception
-  when unique_violation then
-    insert into public.profiles (id, display_name)
-    values (new.id, requested_name || ' ' || left(new.id::text, 4));
-    return new;
 end;
 $$;
 
@@ -286,6 +281,9 @@ left join public.predictions on predictions.user_id = profiles.id
 left join public.matches on matches.id = predictions.match_id
 group by profiles.id, profiles.display_name;
 
+revoke all on function public.save_prediction(text, smallint, smallint)
+from public;
+revoke all on function public.get_server_time() from public;
 grant execute on function public.save_prediction(text, smallint, smallint)
 to authenticated;
 grant execute on function public.get_server_time() to authenticated;
