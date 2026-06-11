@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "seed:generate": "node scripts/generate-match-seed.mjs"
+    "seed:generate": "node scripts/generate-match-seed.mjs",
+    "test": "node --test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",

@@ -1,6 +1,6 @@
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabase.js";
 
-function normalizePrediction(prediction) {
+export function normalizePrediction(prediction) {
   return {
     matchId: prediction.match_id,
     team1Score: String(prediction.team1_score),
@@ -27,8 +27,13 @@ export async function getMyPredictions(userId) {
   );
 }
 
-export async function savePrediction(matchId, team1Score, team2Score) {
-  const { data, error } = await supabase
+export async function savePrediction(
+  matchId,
+  team1Score,
+  team2Score,
+  client = supabase,
+) {
+  const { data, error } = await client
     .rpc("save_prediction", {
       p_match_id: matchId,
       p_team1_score: Number(team1Score),

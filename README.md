@@ -20,8 +20,8 @@ CDT (UTC-5).
 ## Current Status
 
 The Supabase schema, Row Level Security policies, authentication interface,
-persistent predictions, shared guesses, and leaderboard queries are
-implemented.
+persistent predictions, shared guesses, leaderboard queries, and administrative
+result workflow are implemented.
 
 
 ## Database Security
@@ -36,6 +36,14 @@ The database enforces:
 - Match data is readable by authenticated users.
 
 Frontend lock states improve the interface but are not the authorization layer.
+
+## Development Checks
+
+```powershell
+npm test
+npm run lint
+npm run build
+```
 
 ## Project Structure
 
@@ -57,8 +65,7 @@ supabase/
 
 ## Future Improvements
 
-- Add an administrative workflow for entering final scores
-- Add automated tests for authentication and database policies
+- Add integration tests for authentication and database policies
 - Add private pools and invitations
 - Refresh match participants as the knockout bracket advances
 - Deploy the app and configure production authentication URLs
