@@ -45,6 +45,18 @@ npm run lint
 npm run build
 ```
 
+Database integration tests apply all migrations to a disposable PostgreSQL
+database and execute the real functions, triggers, views, and Row Level
+Security policies:
+
+```powershell
+$env:DATABASE_URL="postgres://postgres:postgres@localhost:5432/postgres"
+npm run test:db
+```
+
+The database test command requires `psql`. GitHub Actions runs it automatically
+against a PostgreSQL service.
+
 ## Project Structure
 
 ```text
