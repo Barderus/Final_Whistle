@@ -2,20 +2,63 @@
 
 ## What Is This Project?
 
-Final Whistle is a FIFA World Cup 2026 prediction pool built with React and
-Vite. Users can browse a match schedule, filter fixtures, enter predicted
-scores, and view prototype friends and leaderboard screens.
+Final Whistle is a FIFA World Cup 2026 prediction pool built with React, Vite,
+and Supabase.
 
-The current version is a frontend prototype. It loads the 104-match schedule
-from `public/matches.csv` and keeps predictions in local React state.
-Authentication and persistent predictions have not been added yet.
+Participants can:
 
+- Browse and filter the 104-match schedule
+- Create an account and choose a display name
+- Save one score prediction per match
+- Update predictions before the match starts
+- View other participants' guesses after kickoff
+- Follow leaderboard standings after results are entered
+
+Match times are displayed in Chicago time. During the tournament, Chicago uses
+CDT (UTC-5).
+
+## Current Status
+
+The Supabase schema, Row Level Security policies, authentication interface,
+persistent predictions, shared guesses, and leaderboard queries are
+implemented.
+
+
+## Database Security
+
+The database enforces:
+
+- Users can update only their own profile.
+- Users can insert or update only their own predictions.
+- Prediction writes are rejected when a match has started.
+- Prediction writes are rejected until both teams are confirmed.
+- Other participants' predictions are hidden until kickoff.
+- Match data is readable by authenticated users.
+
+Frontend lock states improve the interface but are not the authorization layer.
+
+## Project Structure
+
+```text
+public/
+  matches.csv
+scripts/
+  generate-match-seed.mjs
+src/
+  components/
+  lib/
+  services/
+  styles/
+  utils/
+supabase/
+  migrations/
+  seed.sql
+```
 
 ## Future Improvements
 
-- Add Supabase authentication and profiles
-- Store matches and predictions in Supabase
-- Enforce prediction deadlines with Row Level Security
-- Reveal participant predictions after each match starts
-- Calculate leaderboard scores from completed match results
-- Verify and update schedule data when tournament details change
+- Add an administrative workflow for entering final scores
+- Add automated tests for authentication and database policies
+- Add private pools and invitations
+- Refresh match participants as the knockout bracket advances
+- Deploy the app and configure production authentication URLs
