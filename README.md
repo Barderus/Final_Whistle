@@ -50,12 +50,13 @@ database and execute the real functions, triggers, views, and Row Level
 Security policies:
 
 ```powershell
-$env:DATABASE_URL="postgres://postgres:postgres@localhost:5432/postgres"
+$env:DATABASE_URL="postgres://postgres@localhost:5432/postgres"
 npm run test:db
 ```
 
-The database test command requires `psql`. GitHub Actions runs it automatically
-against a PostgreSQL service.
+The database test command requires `psql` and a disposable local PostgreSQL
+database configured for local trust authentication. GitHub Actions provides
+that isolated test database automatically.
 
 ## Project Structure
 
