@@ -1,9 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
+import AccountPanel from "./components/AccountPanel";
+import AuthPanel from "./components/AuthPanel";
 import FriendsGuesses from "./components/FriendsGuesses";
 import Leaderboard from "./components/Leaderboard";
 import MatchCard from "./components/MatchCard";
 import MatchFilters from "./components/MatchFilters";
 import Navbar from "./components/Navbar";
+import { isSupabaseConfigured } from "./lib/supabase";
+import {
+  getSession,
+  listenForAuthChanges,
+  signIn,
+  signOut,
+  signUp,
+} from "./services/auth";
+import { getLeaderboard } from "./services/leaderboard";
+import { getMatches, getServerTime } from "./services/matches";
+import {
+  getMyPredictions,
+  getSharedPredictions,
+  savePrediction,
+} from "./services/predictions";
+import { getProfile, updateDisplayName } from "./services/profiles";
 import { parseMatchesCsv } from "./utils/csv";
 import {
   isGroupStage,
@@ -19,13 +37,28 @@ const emptyFilters = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("Schedule");
+  const [session, setSession] = useState(null);
+  const [authStatus, setAuthStatus] = useState(
+    isSupabaseConfigured ? "loading" : "unconfigured",
+  );
+  const [profile, setProfile] = useState(null);
+  const [localMatches, setLocalMatches] = useState([]);
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState({});
+  const [sharedPredictions, setSharedPredictions] = useState([]);
+  const [leaderboardEntries, setLeaderboardEntries] = useState([]);
   const [filters, setFilters] = useState(emptyFilters);
   const [status, setStatus] = useState("loading");
+  const [sharedStatus, setSharedStatus] = useState("idle");
+  const [leaderboardStatus, setLeaderboardStatus] = useState("idle");
+  const [dataError, setDataError] = useState("");
+  const [serverOffset, setServerOffset] = useState(0);
+  const [clock, setClock] = useState(Date.now());
+  const [savingMatches, setSavingMatches] = useState({});
+  const [predictionMessages, setPredictionMessages] = useState({});
 
   useEffect(() => {
-    async function loadMatches() {
+    async function loadLocalMatches() {
       try {
         const response = await fetch("/matches.csv");
 
@@ -33,20 +66,165 @@ export default function App() {
           throw new Error("The match schedule could not be loaded.");
         }
 
-        const csvText = await response.text();
-        const parsedMatches = parseMatchesCsv(csvText);
+        const parsedMatches = parseMatchesCsv(await response.text());
+        setLocalMatches(parsedMatches);
 
-        setMatches(parsedMatches);
-        setStatus(parsedMatches.length > 0 ? "ready" : "empty");
+        if (!session) {
+          setMatches(parsedMatches);
+          setStatus(parsedMatches.length > 0 ? "ready" : "empty");
+        }
       } catch (error) {
-        console.error("Failed to load mock matches:", error);
+        console.error("Failed to load local matches:", error);
         setStatus("error");
       }
     }
 
-    loadMatches();
+    loadLocalMatches();
+  }, [session]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      return undefined;
+    }
+
+    let active = true;
+
+    getSession()
+      .then((currentSession) => {
+        if (active) {
+          setSession(currentSession);
+          setAuthStatus("ready");
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to restore session:", error);
+        if (active) {
+          setAuthStatus("error");
+        }
+      });
+
+    const stopListening = listenForAuthChanges((nextSession) => {
+      setSession(nextSession);
+      setAuthStatus("ready");
+    });
+
+    return () => {
+      active = false;
+      stopListening();
+    };
   }, []);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!session) {
+      setProfile(null);
+      setPredictions({});
+      setSharedPredictions([]);
+      setLeaderboardEntries([]);
+      setDataError("");
+
+      if (localMatches.length > 0) {
+        setMatches(localMatches);
+        setStatus("ready");
+      }
+
+      return;
+    }
+
+    let active = true;
+    setStatus("loading");
+    setDataError("");
+
+    Promise.all([
+      getProfile(session.user.id),
+      getMatches(),
+      getMyPredictions(session.user.id),
+      getServerTime(),
+    ])
+      .then(([nextProfile, nextMatches, nextPredictions, serverTime]) => {
+        if (!active) {
+          return;
+        }
+
+        setProfile(nextProfile);
+        setMatches(nextMatches);
+        setPredictions(nextPredictions);
+        setServerOffset(new Date(serverTime).getTime() - Date.now());
+        setStatus(nextMatches.length > 0 ? "ready" : "empty");
+      })
+      .catch((error) => {
+        console.error("Failed to load Supabase data:", error);
+
+        if (active) {
+          setDataError(error.message || "Could not load your pool data.");
+          setStatus("error");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [localMatches, session]);
+
+  useEffect(() => {
+    if (!session || activeTab !== "Friends' Guesses") {
+      return;
+    }
+
+    let active = true;
+    setSharedStatus("loading");
+
+    getSharedPredictions(session.user.id)
+      .then((nextPredictions) => {
+        if (active) {
+          setSharedPredictions(nextPredictions);
+          setSharedStatus("ready");
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load shared predictions:", error);
+        if (active) {
+          setSharedStatus("error");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeTab, session]);
+
+  useEffect(() => {
+    if (!session || activeTab !== "Leaderboard") {
+      return;
+    }
+
+    let active = true;
+    setLeaderboardStatus("loading");
+
+    getLeaderboard()
+      .then((entries) => {
+        if (active) {
+          setLeaderboardEntries(entries);
+          setLeaderboardStatus("ready");
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load leaderboard:", error);
+        if (active) {
+          setLeaderboardStatus("error");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeTab, session]);
+
+  const currentTime = clock + serverOffset;
   const stages = useMemo(
     () => [...new Set(matches.map((match) => match.stage))],
     [matches],
@@ -75,15 +253,9 @@ export default function App() {
     } else if (activeTab === "Knockout") {
       tabMatches = matches.filter((match) => isKnockoutStage(match.stage));
     } else if (activeTab === "My Guesses") {
-      tabMatches = matches.filter((match) => {
-        const prediction = predictions[match.id];
-        return (
-          prediction?.team1Score !== "" &&
-          prediction?.team1Score !== undefined &&
-          prediction?.team2Score !== "" &&
-          prediction?.team2Score !== undefined
-        );
-      });
+      tabMatches = matches.filter(
+        (match) => predictions[match.id]?.updatedAt,
+      );
     }
 
     return tabMatches.filter((match) => {
@@ -102,8 +274,70 @@ export default function App() {
   function updatePrediction(matchId, prediction) {
     setPredictions((currentPredictions) => ({
       ...currentPredictions,
-      [matchId]: prediction,
+      [matchId]: {
+        ...currentPredictions[matchId],
+        ...prediction,
+      },
     }));
+    setPredictionMessages((messages) => ({
+      ...messages,
+      [matchId]: null,
+    }));
+  }
+
+  async function handleSavePrediction(matchId) {
+    const prediction = predictions[matchId];
+
+    if (!prediction) {
+      return;
+    }
+
+    setSavingMatches((matchesBeingSaved) => ({
+      ...matchesBeingSaved,
+      [matchId]: true,
+    }));
+    setPredictionMessages((messages) => ({
+      ...messages,
+      [matchId]: null,
+    }));
+
+    try {
+      const savedPrediction = await savePrediction(
+        matchId,
+        prediction.team1Score,
+        prediction.team2Score,
+      );
+
+      setPredictions((currentPredictions) => ({
+        ...currentPredictions,
+        [matchId]: savedPrediction,
+      }));
+      setPredictionMessages((messages) => ({
+        ...messages,
+        [matchId]: { type: "success", text: "Prediction saved." },
+      }));
+    } catch (error) {
+      setPredictionMessages((messages) => ({
+        ...messages,
+        [matchId]: {
+          type: "error",
+          text: error.message || "Could not save this prediction.",
+        },
+      }));
+    } finally {
+      setSavingMatches((matchesBeingSaved) => ({
+        ...matchesBeingSaved,
+        [matchId]: false,
+      }));
+    }
+  }
+
+  async function handleDisplayNameUpdate(displayName) {
+    const nextProfile = await updateDisplayName(
+      session.user.id,
+      displayName,
+    );
+    setProfile(nextProfile);
   }
 
   function renderScheduleContent() {
@@ -115,7 +349,7 @@ export default function App() {
       return (
         <div className="empty-state" role="alert">
           <strong>Could not load the schedule</strong>
-          <p>Refresh the page to try again.</p>
+          <p>{dataError || "Refresh the page to try again."}</p>
         </div>
       );
     }
@@ -126,7 +360,7 @@ export default function App() {
           <strong>No matches found</strong>
           <p>
             {activeTab === "My Guesses"
-              ? "Add a score prediction from the schedule first."
+              ? "Save a score prediction from the schedule first."
               : "Try changing or clearing the filters."}
           </p>
         </div>
@@ -137,11 +371,16 @@ export default function App() {
       <div className="match-grid">
         {visibleMatches.map((match) => (
           <MatchCard
+            currentTime={currentTime}
             key={match.id}
             match={match}
             onPredictionChange={updatePrediction}
+            onSavePrediction={handleSavePrediction}
             prediction={predictions[match.id]}
+            predictionMessage={predictionMessages[match.id]}
             readOnly={activeTab === "My Guesses"}
+            saving={Boolean(savingMatches[match.id])}
+            signedIn={Boolean(session)}
           />
         ))}
       </div>
@@ -165,7 +404,7 @@ export default function App() {
           <div className="hero-badge" aria-label="Tournament year 2026">
             <span>World Cup</span>
             <strong>2026</strong>
-            <small>Prototype schedule</small>
+            <small>Prediction pool</small>
           </div>
         </div>
       </header>
@@ -173,6 +412,41 @@ export default function App() {
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
 
       <main>
+        {!isSupabaseConfigured && (
+          <div className="setup-notice" role="status">
+            <strong>Supabase setup required</strong>
+            <span>
+              The schedule is read-only until the environment variables are
+              configured.
+            </span>
+          </div>
+        )}
+
+        {authStatus === "error" && (
+          <div className="setup-notice is-error" role="alert">
+            Could not connect to Supabase. Check the project environment
+            variables.
+          </div>
+        )}
+
+        {isSupabaseConfigured &&
+          authStatus !== "loading" &&
+          (session ? (
+            profile ? (
+              <AccountPanel
+                email={session.user.email}
+                key={profile.id}
+                onDisplayNameUpdate={handleDisplayNameUpdate}
+                onSignOut={signOut}
+                profile={profile}
+              />
+            ) : (
+              <div className="empty-state">Loading your profile...</div>
+            )
+          ) : (
+            <AuthPanel onSignIn={signIn} onSignUp={signUp} />
+          ))}
+
         {scheduleTab && (
           <>
             <MatchFilters
@@ -212,13 +486,24 @@ export default function App() {
         )}
 
         {activeTab === "Friends' Guesses" && (
-          <FriendsGuesses matches={matches} />
+          <FriendsGuesses
+            matches={matches}
+            predictions={sharedPredictions}
+            signedIn={Boolean(session)}
+            status={sharedStatus}
+          />
         )}
-        {activeTab === "Leaderboard" && <Leaderboard />}
+        {activeTab === "Leaderboard" && (
+          <Leaderboard
+            entries={leaderboardEntries}
+            signedIn={Boolean(session)}
+            status={leaderboardStatus}
+          />
+        )}
       </main>
 
       <footer>
-        <p>Final Whistle prototype using local sample data.</p>
+        <p>Final Whistle displays all match times in Chicago time.</p>
       </footer>
     </div>
   );

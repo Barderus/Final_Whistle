@@ -4,10 +4,14 @@ export default function PredictionForm({
   match,
   prediction,
   onPredictionChange,
+  onSave,
+  saving,
+  message,
 }) {
   const team1Score = prediction?.team1Score ?? "";
   const team2Score = prediction?.team2Score ?? "";
   const outcome = getPredictionOutcome(team1Score, team2Score, match);
+  const hasCompleteScore = team1Score !== "" && team2Score !== "";
 
   function updateScore(team, value) {
     if (value !== "" && (!/^\d+$/.test(value) || Number(value) > 99)) {
@@ -69,6 +73,26 @@ export default function PredictionForm({
       >
         {outcome}
       </p>
+
+      <button
+        className="save-prediction-button"
+        disabled={!hasCompleteScore || saving}
+        onClick={() => onSave(match.id)}
+        type="button"
+      >
+        {saving ? "Saving..." : "Save prediction"}
+      </button>
+
+      {message && (
+        <p
+          className={`prediction-message ${
+            message.type === "error" ? "is-error" : ""
+          }`}
+          aria-live="polite"
+        >
+          {message.text}
+        </p>
+      )}
     </div>
   );
 }

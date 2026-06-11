@@ -60,6 +60,6 @@ export function getPredictionOutcome(team1Score, team2Score, match) {
   return "Draw";
 }
 
-export function isMatchLocked(startTime) {
-  return new Date(startTime).getTime() <= Date.now();
+export function isMatchLocked(startTime, currentTime = Date.now()) {
+  return new Date(startTime).getTime() <= currentTime;
 }

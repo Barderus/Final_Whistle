@@ -10,20 +10,28 @@ export default function MatchCard({
   match,
   prediction,
   onPredictionChange,
+  onSavePrediction,
+  predictionMessage,
+  saving = false,
+  currentTime,
+  signedIn,
   readOnly = false,
 }) {
-  const locked = isMatchLocked(match.start_time);
+  const locked = isMatchLocked(match.start_time, currentTime);
   const unlocked = isMatchUnlocked(match);
-  const statusLabel = locked
+  const statusLabel = !signedIn
+    ? "Sign in"
+    : locked
     ? "Locked"
     : unlocked
       ? "Open"
       : "Waiting on teams";
+  const disabled = !unlocked || !signedIn;
 
   return (
     <article
-      aria-disabled={!unlocked}
-      className={`match-card ${!unlocked ? "is-disabled" : ""}`}
+      aria-disabled={disabled}
+      className={`match-card ${disabled ? "is-disabled" : ""}`}
     >
       <div className="match-card-header">
         <div>
@@ -32,7 +40,11 @@ export default function MatchCard({
         </div>
         <span
           className={`lock-status ${
-            locked ? "is-locked" : !unlocked ? "is-unavailable" : ""
+            locked
+              ? "is-locked"
+              : disabled
+                ? "is-unavailable"
+                : ""
           }`}
         >
           {statusLabel}
@@ -53,7 +65,11 @@ export default function MatchCard({
         <strong>{match.team2}</strong>
       </div>
 
-      {!unlocked ? (
+      {!signedIn ? (
+        <div className="locked-prediction">
+          <span>Sign in to submit and view predictions.</span>
+        </div>
+      ) : !unlocked ? (
         <div className="locked-prediction">
           <span>Predictions open when both teams are confirmed.</span>
         </div>
@@ -82,6 +98,9 @@ export default function MatchCard({
           match={match}
           prediction={prediction}
           onPredictionChange={onPredictionChange}
+          onSave={onSavePrediction}
+          saving={saving}
+          message={predictionMessage}
         />
       )}
     </article>
