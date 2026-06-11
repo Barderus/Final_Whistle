@@ -26,7 +26,7 @@ export default function MatchCard({
     : unlocked
       ? "Open"
       : "Waiting on teams";
-  const disabled = !unlocked || !signedIn;
+  const disabled = locked || !unlocked || !signedIn;
   const hasResult =
     match.status === "complete" &&
     match.team1_score !== null &&
