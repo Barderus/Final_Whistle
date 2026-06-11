@@ -197,8 +197,8 @@ begin
     perform public.set_match_result(
       'test-future',
       'complete',
-      1,
-      0,
+      1::smallint,
+      0::smallint,
       null
     );
   exception
@@ -221,8 +221,8 @@ $$;
 select public.set_match_result(
   'test-past',
   'complete',
-  2,
-  1,
+  2::smallint,
+  1::smallint,
   null
 );
 
@@ -234,8 +234,8 @@ begin
     perform public.set_match_result(
       'test-past',
       'complete',
-      3,
-      1,
+      3::smallint,
+      1::smallint,
       null
     );
   exception
@@ -258,8 +258,8 @@ $$;
 select public.set_match_result(
   'test-past',
   'complete',
-  3,
-  1,
+  3::smallint,
+  1::smallint,
   'Official score correction'
 );
 

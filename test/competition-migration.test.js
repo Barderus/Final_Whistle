@@ -7,6 +7,11 @@ const migrationPath = new URL(
   import.meta.url,
 );
 const migration = fs.readFileSync(migrationPath, "utf8");
+const integrationTestPath = new URL(
+  "../supabase/tests/competition.sql",
+  import.meta.url,
+);
+const integrationTest = fs.readFileSync(integrationTestPath, "utf8");
 
 test("admin assignment permanently excludes the account from competition", () => {
   assert.match(migration, /create table public\.competition_exclusions/);
@@ -56,6 +61,14 @@ test("migration preserves existing policy and RPC objects", () => {
     migration,
     /create or replace function public\.set_match_result\(\s*p_match_id text,\s*p_status text,\s*p_team1_score smallint default null,\s*p_team2_score smallint default null\s*\)/,
   );
+});
+
+test("database scenarios call result RPC with smallint scores", () => {
+  assert.doesNotMatch(
+    integrationTest,
+    /set_match_result\([\s\S]*?\n\s+[0-9]+,\n\s+[0-9]+,/,
+  );
+  assert.match(integrationTest, /[0-9]+::smallint/);
 });
 
 test("duplicate signup names receive a deterministic unique fallback", () => {
