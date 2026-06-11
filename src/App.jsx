@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import AccountPanel from "./components/AccountPanel";
+import AdminResultsPanel from "./components/AdminResultsPanel";
 import AuthPanel from "./components/AuthPanel";
 import FriendsGuesses from "./components/FriendsGuesses";
 import Leaderboard from "./components/Leaderboard";
@@ -7,6 +8,7 @@ import MatchCard from "./components/MatchCard";
 import MatchFilters from "./components/MatchFilters";
 import Navbar from "./components/Navbar";
 import { isSupabaseConfigured } from "./lib/supabase";
+import { isAdmin, saveMatchResult } from "./services/admin";
 import {
   getSession,
   listenForAuthChanges,
@@ -21,7 +23,7 @@ import {
   getSharedPredictions,
   savePrediction,
 } from "./services/predictions";
-import { getProfile, updateDisplayName } from "./services/profiles";
+import { ensureProfile, updateDisplayName } from "./services/profiles";
 import { parseMatchesCsv } from "./utils/csv";
 import {
   isGroupStage,
@@ -42,6 +44,7 @@ export default function App() {
     isSupabaseConfigured ? "loading" : "unconfigured",
   );
   const [profile, setProfile] = useState(null);
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const [localMatches, setLocalMatches] = useState([]);
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState({});
@@ -122,10 +125,12 @@ export default function App() {
   useEffect(() => {
     if (!session) {
       setProfile(null);
+      setIsAdminUser(false);
       setPredictions({});
       setSharedPredictions([]);
       setLeaderboardEntries([]);
       setDataError("");
+      setActiveTab("Schedule");
 
       if (localMatches.length > 0) {
         setMatches(localMatches);
@@ -140,22 +145,32 @@ export default function App() {
     setDataError("");
 
     Promise.all([
-      getProfile(session.user.id),
+      ensureProfile(session.user),
       getMatches(),
       getMyPredictions(session.user.id),
       getServerTime(),
+      isAdmin().catch(() => false),
     ])
-      .then(([nextProfile, nextMatches, nextPredictions, serverTime]) => {
-        if (!active) {
-          return;
-        }
+      .then(
+        ([
+          nextProfile,
+          nextMatches,
+          nextPredictions,
+          serverTime,
+          nextIsAdmin,
+        ]) => {
+          if (!active) {
+            return;
+          }
 
-        setProfile(nextProfile);
-        setMatches(nextMatches);
-        setPredictions(nextPredictions);
-        setServerOffset(new Date(serverTime).getTime() - Date.now());
-        setStatus(nextMatches.length > 0 ? "ready" : "empty");
-      })
+          setProfile(nextProfile);
+          setIsAdminUser(nextIsAdmin);
+          setMatches(nextMatches);
+          setPredictions(nextPredictions);
+          setServerOffset(new Date(serverTime).getTime() - Date.now());
+          setStatus(nextMatches.length > 0 ? "ready" : "empty");
+        },
+      )
       .catch((error) => {
         console.error("Failed to load Supabase data:", error);
 
@@ -333,11 +348,37 @@ export default function App() {
   }
 
   async function handleDisplayNameUpdate(displayName) {
-    const nextProfile = await updateDisplayName(
-      session.user.id,
-      displayName,
-    );
+    const nextProfile = await updateDisplayName(displayName);
     setProfile(nextProfile);
+    return nextProfile;
+  }
+
+  async function handleSaveMatchResult(
+    matchId,
+    statusValue,
+    team1Score,
+    team2Score,
+  ) {
+    const updatedMatch = await saveMatchResult(
+      matchId,
+      statusValue,
+      team1Score,
+      team2Score,
+    );
+
+    setMatches((currentMatches) =>
+      currentMatches.map((match) =>
+        match.id === updatedMatch.id ? updatedMatch : match,
+      ),
+    );
+
+    if (activeTab === "Leaderboard") {
+      const entries = await getLeaderboard();
+      setLeaderboardEntries(entries);
+      setLeaderboardStatus("ready");
+    }
+
+    return updatedMatch;
   }
 
   function renderScheduleContent() {
@@ -409,7 +450,11 @@ export default function App() {
         </div>
       </header>
 
-      <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
+      <Navbar
+        activeTab={activeTab}
+        isAdmin={isAdminUser}
+        onTabChange={setActiveTab}
+      />
 
       <main>
         {!isSupabaseConfigured && (
@@ -498,6 +543,15 @@ export default function App() {
             entries={leaderboardEntries}
             signedIn={Boolean(session)}
             status={leaderboardStatus}
+          />
+        )}
+        {activeTab === "Admin" && (
+          <AdminResultsPanel
+            isAdmin={isAdminUser}
+            matches={matches}
+            onSaveResult={handleSaveMatchResult}
+            signedIn={Boolean(session)}
+            status={status}
           />
         )}
       </main>

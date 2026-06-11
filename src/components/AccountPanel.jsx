@@ -17,12 +17,18 @@ export default function AccountPanel({
     setMessage(null);
 
     try {
-      await onDisplayNameUpdate(displayName);
+      const savedProfile = await onDisplayNameUpdate(displayName);
+      setDisplayName(savedProfile.display_name);
       setMessage({ type: "success", text: "Display name updated." });
     } catch (error) {
+      console.error("Display name update failed:", error);
       setMessage({
         type: "error",
-        text: error.message || "Could not update your display name.",
+        text:
+          error.message ||
+          error.details ||
+          error.hint ||
+          "Could not update your display name.",
       });
     } finally {
       setSaving(false);
