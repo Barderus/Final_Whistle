@@ -15,18 +15,22 @@ export default function MatchCard({
   saving = false,
   currentTime,
   signedIn,
+  predictionEligible = true,
   readOnly = false,
 }) {
   const locked = isMatchLocked(match.start_time, currentTime);
   const unlocked = isMatchUnlocked(match);
   const statusLabel = !signedIn
     ? "Sign in"
+    : !predictionEligible
+      ? "Admin"
     : locked
     ? "Locked"
     : unlocked
       ? "Open"
       : "Waiting on teams";
-  const disabled = locked || !unlocked || !signedIn;
+  const disabled =
+    locked || !unlocked || !signedIn || !predictionEligible;
   const hasResult =
     match.status === "complete" &&
     match.team1_score !== null &&
@@ -81,6 +85,10 @@ export default function MatchCard({
       {!signedIn ? (
         <div className="locked-prediction">
           <span>Sign in to submit and view predictions.</span>
+        </div>
+      ) : !predictionEligible ? (
+        <div className="locked-prediction">
+          <span>Admin accounts cannot submit predictions.</span>
         </div>
       ) : !unlocked ? (
         <div className="locked-prediction">

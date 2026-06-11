@@ -8,7 +8,11 @@ import MatchCard from "./components/MatchCard";
 import MatchFilters from "./components/MatchFilters";
 import Navbar from "./components/Navbar";
 import { isSupabaseConfigured } from "./lib/supabase";
-import { isAdmin, saveMatchResult } from "./services/admin";
+import {
+  isAdmin,
+  isCompetitionExcluded,
+  saveMatchResult,
+} from "./services/admin";
 import {
   getSession,
   listenForAuthChanges,
@@ -36,6 +40,7 @@ const emptyFilters = {
   team: "",
   location: "",
 };
+const DATA_REFRESH_INTERVAL_MS = 30000;
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("Schedule");
@@ -45,6 +50,8 @@ export default function App() {
   );
   const [profile, setProfile] = useState(null);
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const [isCompetitionExcludedUser, setIsCompetitionExcludedUser] =
+    useState(false);
   const [localMatches, setLocalMatches] = useState([]);
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState({});
@@ -128,6 +135,7 @@ export default function App() {
     if (!session) {
       setProfile(null);
       setIsAdminUser(false);
+      setIsCompetitionExcludedUser(false);
       setPredictions({});
       setSharedPredictions([]);
       setLeaderboardEntries([]);
@@ -152,6 +160,7 @@ export default function App() {
       getMyPredictions(session.user.id),
       getServerTime(),
       isAdmin().catch(() => false),
+      isCompetitionExcluded(session.user.id).catch(() => false),
     ])
       .then(
         ([
@@ -160,6 +169,7 @@ export default function App() {
           nextPredictions,
           serverTime,
           nextIsAdmin,
+          nextIsCompetitionExcluded,
         ]) => {
           if (!active) {
             return;
@@ -167,6 +177,9 @@ export default function App() {
 
           setProfile(nextProfile);
           setIsAdminUser(nextIsAdmin);
+          setIsCompetitionExcludedUser(
+            nextIsAdmin || nextIsCompetitionExcluded,
+          );
           setMatches(nextMatches);
           setPredictions(nextPredictions);
           setServerOffset(new Date(serverTime).getTime() - Date.now());
@@ -193,24 +206,53 @@ export default function App() {
     }
 
     let active = true;
-    setSharedStatus("loading");
+    let refreshing = false;
 
-    getSharedPredictions(session.user.id)
-      .then((nextPredictions) => {
+    async function refreshSharedPredictions(showLoading = false) {
+      if (refreshing) {
+        return;
+      }
+
+      refreshing = true;
+
+      if (showLoading) {
+        setSharedStatus("loading");
+      }
+
+      try {
+        const nextPredictions = await getSharedPredictions(session.user.id);
+
         if (active) {
           setSharedPredictions(nextPredictions);
           setSharedStatus("ready");
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("Failed to load shared predictions:", error);
         if (active) {
           setSharedStatus("error");
         }
-      });
+      } finally {
+        refreshing = false;
+      }
+    }
+
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") {
+        refreshSharedPredictions();
+      }
+    }
+
+    refreshSharedPredictions(true);
+    const timer = window.setInterval(
+      refreshSharedPredictions,
+      DATA_REFRESH_INTERVAL_MS,
+    );
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       active = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [activeTab, session]);
 
@@ -220,24 +262,53 @@ export default function App() {
     }
 
     let active = true;
-    setLeaderboardStatus("loading");
+    let refreshing = false;
 
-    getLeaderboard()
-      .then((entries) => {
+    async function refreshLeaderboard(showLoading = false) {
+      if (refreshing) {
+        return;
+      }
+
+      refreshing = true;
+
+      if (showLoading) {
+        setLeaderboardStatus("loading");
+      }
+
+      try {
+        const entries = await getLeaderboard();
+
         if (active) {
           setLeaderboardEntries(entries);
           setLeaderboardStatus("ready");
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("Failed to load leaderboard:", error);
         if (active) {
           setLeaderboardStatus("error");
         }
-      });
+      } finally {
+        refreshing = false;
+      }
+    }
+
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") {
+        refreshLeaderboard();
+      }
+    }
+
+    refreshLeaderboard(true);
+    const timer = window.setInterval(
+      refreshLeaderboard,
+      DATA_REFRESH_INTERVAL_MS,
+    );
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       active = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [activeTab, session]);
 
@@ -360,12 +431,14 @@ export default function App() {
     statusValue,
     team1Score,
     team2Score,
+    changeReason,
   ) {
     const updatedMatch = await saveMatchResult(
       matchId,
       statusValue,
       team1Score,
       team2Score,
+      changeReason,
     );
 
     setMatches((currentMatches) =>
@@ -421,6 +494,7 @@ export default function App() {
             onSavePrediction={handleSavePrediction}
             prediction={predictions[match.id]}
             predictionMessage={predictionMessages[match.id]}
+            predictionEligible={!isCompetitionExcludedUser}
             readOnly={activeTab === "My Guesses"}
             saving={Boolean(savingMatches[match.id])}
             signedIn={Boolean(session)}
@@ -430,7 +504,11 @@ export default function App() {
     );
   }
 
-  const scheduleTab = !["Friends' Guesses", "Leaderboard"].includes(activeTab);
+  const scheduleTab = ![
+    "Friends' Guesses",
+    "Leaderboard",
+    "Admin",
+  ].includes(activeTab);
 
   return (
     <div className="app-shell">

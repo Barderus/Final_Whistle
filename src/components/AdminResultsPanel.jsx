@@ -21,8 +21,14 @@ function getDraftFromMatch(match) {
 
 function MatchResultEditor({ match, onSaveResult }) {
   const [draft, setDraft] = useState(() => getDraftFromMatch(match));
+  const [changeReason, setChangeReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const isCorrection =
+    match.status === "complete" &&
+    (draft.status !== match.status ||
+      String(draft.team1Score) !== String(match.team1_score ?? "") ||
+      String(draft.team2Score) !== String(match.team2_score ?? ""));
 
   function updateField(field, value) {
     setDraft((current) => ({
@@ -58,9 +64,11 @@ function MatchResultEditor({ match, onSaveResult }) {
         draft.status,
         draft.team1Score,
         draft.team2Score,
+        changeReason,
       );
 
       setDraft(getDraftFromMatch(updatedMatch));
+      setChangeReason("");
       setMessage({ type: "success", text: "Match result saved." });
     } catch (error) {
       setMessage({
@@ -132,8 +140,26 @@ function MatchResultEditor({ match, onSaveResult }) {
         </label>
       </div>
 
+      {isCorrection && (
+        <label className="admin-field">
+          <span>Correction reason</span>
+          <textarea
+            maxLength="500"
+            minLength="5"
+            onChange={(event) => setChangeReason(event.target.value)}
+            required
+            rows="3"
+            value={changeReason}
+          />
+        </label>
+      )}
+
       <button disabled={saving} type="submit">
-        {saving ? "Saving..." : "Save result"}
+        {saving
+          ? "Saving..."
+          : isCorrection
+            ? "Save correction"
+            : "Save result"}
       </button>
 
       {message && (
