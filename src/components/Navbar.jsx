@@ -7,11 +7,13 @@ const tabs = [
   "Leaderboard",
 ];
 
-export default function Navbar({ activeTab, onTabChange }) {
+export default function Navbar({ activeTab, onTabChange, isAdmin }) {
+  const visibleTabs = isAdmin ? [...tabs, "Admin"] : tabs;
+
   return (
     <nav className="main-nav" aria-label="Primary navigation">
       <div className="nav-list">
-        {tabs.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             className={`nav-button ${activeTab === tab ? "is-active" : ""}`}
             key={tab}

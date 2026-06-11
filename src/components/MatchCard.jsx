@@ -27,6 +27,10 @@ export default function MatchCard({
       ? "Open"
       : "Waiting on teams";
   const disabled = !unlocked || !signedIn;
+  const hasResult =
+    match.status === "complete" &&
+    match.team1_score !== null &&
+    match.team2_score !== null;
 
   return (
     <article
@@ -64,6 +68,15 @@ export default function MatchCard({
         <span>vs</span>
         <strong>{match.team2}</strong>
       </div>
+
+      {hasResult && (
+        <div className="match-result" aria-label="Final score">
+          <span>Final score</span>
+          <strong>
+            {match.team1_score} - {match.team2_score}
+          </strong>
+        </div>
+      )}
 
       {!signedIn ? (
         <div className="locked-prediction">
