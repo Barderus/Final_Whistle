@@ -1,4 +1,5 @@
 const GROUP_STAGE_PATTERN = /^Group /;
+const ROUND_OF_32_STAGE = "Round of 32";
 const DISPLAY_TIME_ZONE = "America/Chicago";
 
 export function isGroupStage(stage) {
@@ -18,6 +19,10 @@ export function isPlaceholderTeam(team) {
 }
 
 export function isMatchUnlocked(match) {
+  if (match.stage === ROUND_OF_32_STAGE) {
+    return true;
+  }
+
   return (
     !isPlaceholderTeam(match.team1) && !isPlaceholderTeam(match.team2)
   );

@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isMatchLocked } from "../src/utils/matches.js";
+import {
+  isMatchLocked,
+  isMatchUnlocked,
+} from "../src/utils/matches.js";
 
 const mexicoSouthAfricaKickoff = "2026-06-11T19:00:00Z";
 
@@ -39,5 +42,27 @@ test("keeps predictions locked after kickoff", () => {
       oneMillisecondAfterKickoff,
     ),
     true,
+  );
+});
+
+test("unlocks Round of 32 bracket slot matches", () => {
+  assert.equal(
+    isMatchUnlocked({
+      stage: "Round of 32",
+      team1: "2A",
+      team2: "3ABCDF",
+    }),
+    true,
+  );
+});
+
+test("keeps later knockout placeholder matches locked", () => {
+  assert.equal(
+    isMatchUnlocked({
+      stage: "Round of 16",
+      team1: "W73",
+      team2: "W75",
+    }),
+    false,
   );
 });
