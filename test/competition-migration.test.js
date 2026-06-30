@@ -7,6 +7,14 @@ const migrationPath = new URL(
   import.meta.url,
 );
 const migration = fs.readFileSync(migrationPath, "utf8");
+const knockoutWinnerMigrationPath = new URL(
+  "../supabase/migrations/202606300001_add_knockout_winners.sql",
+  import.meta.url,
+);
+const knockoutWinnerMigration = fs.readFileSync(
+  knockoutWinnerMigrationPath,
+  "utf8",
+);
 const integrationTestPath = new URL(
   "../supabase/tests/competition.sql",
   import.meta.url,
@@ -84,4 +92,24 @@ test("duplicate signup names receive a deterministic unique fallback", () => {
     migration,
     /jsonb_build_object\('display_name', requested_name\)/,
   );
+});
+
+test("knockout ties require and score an advancing team", () => {
+  assert.match(knockoutWinnerMigration, /add column if not exists winner_team/);
+  assert.match(
+    knockoutWinnerMigration,
+    /Completed knockout ties require an advancing team\./,
+  );
+  assert.match(knockoutWinnerMigration, /p_actual_winner_side/);
+  assert.match(knockoutWinnerMigration, /matches\.winner_team = matches\.team2/);
+  assert.match(knockoutWinnerMigration, /previous_winner_team/);
+  assert.match(knockoutWinnerMigration, /new_winner_team/);
+});
+
+test("database scenario covers exact tie and penalty winner scoring", () => {
+  assert.match(integrationTest, /test-knockout-tie/);
+  assert.match(integrationTest, /select winner_team\s+from public\.matches\s+where id = 'test-knockout-tie'/);
+  assert.match(integrationTest, /<> 'Team F'/);
+  assert.match(integrationTest, /Expected exact tied-score prediction to earn 3 points\./);
+  assert.match(integrationTest, /Expected penalty-winner prediction to earn 1 point\./);
 });

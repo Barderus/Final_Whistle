@@ -4,6 +4,13 @@ import fs from "node:fs";
 
 const appPath = new URL("../src/App.jsx", import.meta.url);
 const app = fs.readFileSync(appPath, "utf8");
+const adminPanelPath = new URL(
+  "../src/components/AdminResultsPanel.jsx",
+  import.meta.url,
+);
+const adminPanel = fs.readFileSync(adminPanelPath, "utf8");
+const matchCardPath = new URL("../src/components/MatchCard.jsx", import.meta.url);
+const matchCard = fs.readFileSync(matchCardPath, "utf8");
 const matchesCsvPath = new URL("../public/matches.csv", import.meta.url);
 const matchesCsv = fs.readFileSync(matchesCsvPath, "utf8");
 
@@ -31,4 +38,15 @@ test("Round of 32 website data uses confirmed team names", () => {
     /match-074,74,Round of 32,[^\n]+,Brazil,Japan/,
   );
   assert.doesNotMatch(matchesCsv, /Round of 32,[^\n]+,\d[A-L]+,/);
+});
+
+test("admin tied knockout results can select an advancing team", () => {
+  assert.match(adminPanel, /const needsWinner = isKnockoutStage\(match\.stage\) && completedTie/);
+  assert.match(adminPanel, /<span>Advancing team<\/span>/);
+  assert.match(adminPanel, /<option value=\{match\.team1\}>\{match\.team1\}<\/option>/);
+  assert.match(adminPanel, /<option value=\{match\.team2\}>\{match\.team2\}<\/option>/);
+});
+
+test("completed match cards display the penalty winner when present", () => {
+  assert.match(matchCard, /match\.winner_team \? `, \$\{match\.winner_team\} advanced` : ""/);
 });

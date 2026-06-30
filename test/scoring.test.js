@@ -15,6 +15,18 @@ test("awards one point for the correct winner with a different score", () => {
   assert.equal(calculatePredictionPoints(0, 2, 1, 4), 1);
 });
 
+test("uses the selected knockout winner when the official score is tied", () => {
+  assert.equal(calculatePredictionPoints(1, 1, 1, 1, "complete", -1), 3);
+  assert.equal(calculatePredictionPoints(0, 2, 1, 1, "complete", -1), 1);
+  assert.equal(calculatePredictionPoints(2, 2, 1, 1, "complete", -1), 0);
+  assert.equal(calculatePredictionPoints(2, 0, 1, 1, "complete", -1), 0);
+});
+
+test("supports either team as the selected knockout winner", () => {
+  assert.equal(calculatePredictionPoints(2, 0, 1, 1, "complete", 1), 1);
+  assert.equal(calculatePredictionPoints(0, 2, 1, 1, "complete", 1), 0);
+});
+
 test("awards one point for a correct draw with a different score", () => {
   assert.equal(calculatePredictionPoints(1, 1, 2, 2), 1);
 });
@@ -53,6 +65,14 @@ test("tallies completed predictions for the leaderboard", () => {
       status: "complete",
     },
     {
+      predictedTeam1Score: 0,
+      predictedTeam2Score: 2,
+      actualTeam1Score: 1,
+      actualTeam2Score: 1,
+      actualWinnerSide: -1,
+      status: "complete",
+    },
+    {
       predictedTeam1Score: 1,
       predictedTeam2Score: 0,
       actualTeam1Score: 1,
@@ -62,8 +82,8 @@ test("tallies completed predictions for the leaderboard", () => {
   ]);
 
   assert.deepEqual(totals, {
-    scoredPredictions: 3,
+    scoredPredictions: 4,
     exactScores: 1,
-    points: 4,
+    points: 5,
   });
 });

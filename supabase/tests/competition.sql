@@ -97,6 +97,15 @@ values
     'Test Stadium',
     'Team E',
     'Team F'
+  ),
+  (
+    'test-knockout-tie',
+    1004,
+    'Round of 32',
+    now() + interval '1 day',
+    'Test Stadium',
+    'Team E',
+    'Team F'
   );
 
 set local role authenticated;
@@ -142,6 +151,62 @@ begin
   end if;
 end;
 $$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000001',
+  true
+);
+select set_config(
+  'request.jwt.claim.email',
+  'participant@example.com',
+  true
+);
+
+insert into public.predictions (
+  user_id,
+  match_id,
+  team1_score,
+  team2_score
+)
+values (
+  '00000000-0000-0000-0000-000000000001',
+  'test-knockout-tie',
+  1,
+  1
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000002',
+  true
+);
+select set_config(
+  'request.jwt.claim.email',
+  'second@example.com',
+  true
+);
+
+insert into public.predictions (
+  user_id,
+  match_id,
+  team1_score,
+  team2_score
+)
+values (
+  '00000000-0000-0000-0000-000000000002',
+  'test-knockout-tie',
+  0,
+  2
+);
+
+reset role;
+
+update public.matches
+set start_time = now() - interval '1 hour'
+where id = 'test-knockout-tie';
 
 set local role authenticated;
 select set_config(
@@ -263,6 +328,15 @@ select public.set_match_result(
   'Official score correction'
 );
 
+select public.set_match_result(
+  'test-knockout-tie',
+  'complete',
+  1::smallint,
+  1::smallint,
+  'Team F',
+  null
+);
+
 reset role;
 
 do $$
@@ -273,6 +347,62 @@ begin
     where match_id = 'test-past'
   ) <> 2 then
     raise exception 'Expected two audit rows for the completed match.';
+  end if;
+end;
+$$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000001',
+  true
+);
+select set_config(
+  'request.jwt.claim.email',
+  'participant@example.com',
+  true
+);
+
+do $$
+begin
+  if (
+    select winner_team
+    from public.matches
+    where id = 'test-knockout-tie'
+  ) <> 'Team F' then
+    raise exception 'Knockout penalty winner was not saved.';
+  end if;
+
+  if (
+    select points
+    from public.leaderboard
+    where user_id = '00000000-0000-0000-0000-000000000001'
+  ) <> 3 then
+    raise exception 'Expected exact tied-score prediction to earn 3 points.';
+  end if;
+
+  if (
+    select exact_scores
+    from public.leaderboard
+    where user_id = '00000000-0000-0000-0000-000000000001'
+  ) <> 1 then
+    raise exception 'Expected exact tied-score prediction to count as exact.';
+  end if;
+
+  if (
+    select points
+    from public.leaderboard
+    where user_id = '00000000-0000-0000-0000-000000000002'
+  ) <> 1 then
+    raise exception 'Expected penalty-winner prediction to earn 1 point.';
+  end if;
+
+  if (
+    select exact_scores
+    from public.leaderboard
+    where user_id = '00000000-0000-0000-0000-000000000002'
+  ) <> 0 then
+    raise exception 'Penalty-winner prediction should not count as exact.';
   end if;
 end;
 $$;

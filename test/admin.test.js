@@ -33,6 +33,7 @@ test("stores a match result with an optional correction reason", async () => {
     status: "complete",
     team1_score: 2,
     team2_score: 1,
+    winner_team: "Team A",
   };
   const client = {
     rpc(name, parameters) {
@@ -48,6 +49,7 @@ test("stores a match result with an optional correction reason", async () => {
     "complete",
     "2",
     "1",
+    "Team A",
     "Corrected official score",
     client,
   );
@@ -60,6 +62,7 @@ test("stores a match result with an optional correction reason", async () => {
         p_status: "complete",
         p_team1_score: 2,
         p_team2_score: 1,
+        p_winner_team: "Team A",
         p_change_reason: "Corrected official score",
       },
     },
@@ -86,6 +89,7 @@ test("sends blank scores and reasons as null", async () => {
     "scheduled",
     "",
     "",
+    "",
     "   ",
     client,
   );
@@ -95,6 +99,46 @@ test("sends blank scores and reasons as null", async () => {
     p_status: "scheduled",
     p_team1_score: null,
     p_team2_score: null,
+    p_winner_team: null,
     p_change_reason: null,
   });
+});
+
+test("sends a selected advancing team for tied knockout results", async () => {
+  const calls = [];
+  const storedMatch = {
+    id: "match-075",
+    status: "complete",
+    team1_score: 1,
+    team2_score: 1,
+    winner_team: "Paraguay",
+  };
+  const client = {
+    rpc(name, parameters) {
+      calls.push({ name, parameters });
+      return {
+        single: async () => ({ data: storedMatch, error: null }),
+      };
+    },
+  };
+
+  const result = await saveMatchResult(
+    "match-075",
+    "complete",
+    "1",
+    "1",
+    "Paraguay",
+    "",
+    client,
+  );
+
+  assert.deepEqual(calls[0].parameters, {
+    p_match_id: "match-075",
+    p_status: "complete",
+    p_team1_score: 1,
+    p_team2_score: 1,
+    p_winner_team: "Paraguay",
+    p_change_reason: null,
+  });
+  assert.deepEqual(result, storedMatch);
 });
