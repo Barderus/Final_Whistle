@@ -4,6 +4,7 @@ export function calculatePredictionPoints(
   actualTeam1Score,
   actualTeam2Score,
   matchStatus = "complete",
+  actualWinnerSide = null,
 ) {
   if (matchStatus !== "complete") {
     return 0;
@@ -19,7 +20,8 @@ export function calculatePredictionPoints(
   const predictedOutcome = Math.sign(
     predictedTeam1Score - predictedTeam2Score,
   );
-  const actualOutcome = Math.sign(actualTeam1Score - actualTeam2Score);
+  const actualOutcome =
+    actualWinnerSide ?? Math.sign(actualTeam1Score - actualTeam2Score);
 
   return predictedOutcome === actualOutcome ? 1 : 0;
 }
@@ -37,6 +39,7 @@ export function tallyLeaderboardPredictions(predictions) {
         prediction.actualTeam1Score,
         prediction.actualTeam2Score,
         prediction.status,
+        prediction.actualWinnerSide ?? null,
       );
 
       return {
