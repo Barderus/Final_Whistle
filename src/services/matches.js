@@ -4,7 +4,7 @@ export async function getMatches() {
   const { data, error } = await supabase
     .from("matches")
     .select(
-      "id, match_number, stage, start_time, location, team1, team2, team1_score, team2_score, status",
+      "id, match_number, stage, start_time, location, team1, team2, team1_score, team2_score, winner_team, status",
     )
     .order("start_time")
     .order("match_number");

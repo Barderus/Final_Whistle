@@ -27,6 +27,7 @@ export async function saveMatchResult(
   status,
   team1Score,
   team2Score,
+  winnerTeam = "",
   changeReason = "",
   client = supabase,
 ) {
@@ -41,6 +42,7 @@ export async function saveMatchResult(
       p_status: status,
       p_team1_score: normalizeScore(team1Score),
       p_team2_score: normalizeScore(team2Score),
+      p_winner_team: winnerTeam || null,
       p_change_reason: changeReason.trim() || null,
     })
     .single();

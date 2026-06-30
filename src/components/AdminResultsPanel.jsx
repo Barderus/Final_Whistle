@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   formatMatchDate,
   formatMatchTime,
+  isKnockoutStage,
   isPlaceholderTeam,
 } from "../utils/matches";
 
@@ -16,6 +17,7 @@ function getDraftFromMatch(match) {
     status: match.status,
     team1Score: match.team1_score ?? "",
     team2Score: match.team2_score ?? "",
+    winnerTeam: match.winner_team ?? "",
   };
 }
 
@@ -28,7 +30,14 @@ function MatchResultEditor({ match, onSaveResult }) {
     match.status === "complete" &&
     (draft.status !== match.status ||
       String(draft.team1Score) !== String(match.team1_score ?? "") ||
-      String(draft.team2Score) !== String(match.team2_score ?? ""));
+      String(draft.team2Score) !== String(match.team2_score ?? "") ||
+      String(draft.winnerTeam) !== String(match.winner_team ?? ""));
+  const completedTie =
+    draft.status === "complete" &&
+    draft.team1Score !== "" &&
+    draft.team2Score !== "" &&
+    Number(draft.team1Score) === Number(draft.team2Score);
+  const needsWinner = isKnockoutStage(match.stage) && completedTie;
 
   function updateField(field, value) {
     setDraft((current) => ({
@@ -47,6 +56,7 @@ function MatchResultEditor({ match, onSaveResult }) {
     if (value === "scheduled") {
       nextDraft.team1Score = "";
       nextDraft.team2Score = "";
+      nextDraft.winnerTeam = "";
     }
 
     setDraft(nextDraft);
@@ -64,6 +74,7 @@ function MatchResultEditor({ match, onSaveResult }) {
         draft.status,
         draft.team1Score,
         draft.team2Score,
+        needsWinner ? draft.winnerTeam : "",
         changeReason,
       );
 
@@ -138,6 +149,21 @@ function MatchResultEditor({ match, onSaveResult }) {
             value={draft.team2Score}
           />
         </label>
+
+        {needsWinner && (
+          <label className="admin-field">
+            <span>Advancing team</span>
+            <select
+              onChange={(event) => updateField("winnerTeam", event.target.value)}
+              required
+              value={draft.winnerTeam}
+            >
+              <option value="">Select winner</option>
+              <option value={match.team1}>{match.team1}</option>
+              <option value={match.team2}>{match.team2}</option>
+            </select>
+          </label>
+        )}
       </div>
 
       {isCorrection && (

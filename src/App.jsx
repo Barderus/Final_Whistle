@@ -431,6 +431,7 @@ export default function App() {
     statusValue,
     team1Score,
     team2Score,
+    winnerTeam,
     changeReason,
   ) {
     const updatedMatch = await saveMatchResult(
@@ -438,6 +439,7 @@ export default function App() {
       statusValue,
       team1Score,
       team2Score,
+      winnerTeam,
       changeReason,
     );
 

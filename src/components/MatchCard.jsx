@@ -78,6 +78,7 @@ export default function MatchCard({
           <span>Final score</span>
           <strong>
             {match.team1_score} - {match.team2_score}
+            {match.winner_team ? `, ${match.winner_team} advanced` : ""}
           </strong>
         </div>
       )}
