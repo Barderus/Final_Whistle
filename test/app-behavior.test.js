@@ -40,6 +40,28 @@ test("Round of 32 website data uses confirmed team names", () => {
   assert.doesNotMatch(matchesCsv, /Round of 32,[^\n]+,\d[A-L]+,/);
 });
 
+test("Round of 16 website data uses confirmed team names", () => {
+  assert.match(
+    matchesCsv,
+    /match-089,89,Round of 16,[^\n]+,Paraguay,France/,
+  );
+  assert.match(
+    matchesCsv,
+    /match-090,90,Round of 16,[^\n]+,Canada,Morocco/,
+  );
+  assert.doesNotMatch(matchesCsv, /Round of 16,[^\n]+,[WL]\d+,/);
+  assert.doesNotMatch(matchesCsv, /Round of 16,[^\n]+,[^,\n]+,[WL]\d+$/m);
+});
+
+test("Knockout tab renders knockout matches through the unlocked match card flow", () => {
+  assert.match(
+    app,
+    /activeTab === "Knockout"[\s\S]+?isKnockoutStage\(match\.stage\)/,
+  );
+  assert.match(matchCard, /const unlocked = isMatchUnlocked\(match\)/);
+  assert.match(matchCard, /unlocked\s+\?\s+"Open"/);
+});
+
 test("admin tied knockout results can select an advancing team", () => {
   assert.match(adminPanel, /const needsWinner = isKnockoutStage\(match\.stage\) && completedTie/);
   assert.match(adminPanel, /<span>Advancing team<\/span>/);

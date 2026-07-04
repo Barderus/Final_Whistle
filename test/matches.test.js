@@ -56,12 +56,23 @@ test("unlocks Round of 32 bracket slot matches", () => {
   );
 });
 
-test("keeps later knockout placeholder matches locked", () => {
+test("unlocks Round of 16 matches with confirmed teams", () => {
   assert.equal(
     isMatchUnlocked({
       stage: "Round of 16",
-      team1: "W73",
-      team2: "W75",
+      team1: "Canada",
+      team2: "Morocco",
+    }),
+    true,
+  );
+});
+
+test("keeps later knockout placeholder matches locked", () => {
+  assert.equal(
+    isMatchUnlocked({
+      stage: "Quarterfinals",
+      team1: "W89",
+      team2: "W90",
     }),
     false,
   );
