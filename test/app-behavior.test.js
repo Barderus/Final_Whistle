@@ -13,6 +13,8 @@ const matchCardPath = new URL("../src/components/MatchCard.jsx", import.meta.url
 const matchCard = fs.readFileSync(matchCardPath, "utf8");
 const matchesCsvPath = new URL("../public/matches.csv", import.meta.url);
 const matchesCsv = fs.readFileSync(matchesCsvPath, "utf8");
+const seedSqlPath = new URL("../supabase/seed.sql", import.meta.url);
+const seedSql = fs.readFileSync(seedSqlPath, "utf8");
 
 test("Admin tab does not render the schedule", () => {
   assert.match(
@@ -51,6 +53,36 @@ test("Round of 16 website data uses confirmed team names", () => {
   );
   assert.doesNotMatch(matchesCsv, /Round of 16,[^\n]+,[WL]\d+,/);
   assert.doesNotMatch(matchesCsv, /Round of 16,[^\n]+,[^,\n]+,[WL]\d+$/m);
+});
+
+test("Quarterfinals website data uses confirmed team names and venues", () => {
+  assert.match(
+    matchesCsv,
+    /match-097,97,Quarterfinals,2026-07-09T20:00:00Z,"Boston Stadium, Boston",France,Morocco/,
+  );
+  assert.match(
+    matchesCsv,
+    /match-100,100,Quarterfinals,2026-07-12T01:00:00Z,"Kansas City Stadium, Kansas City",Argentina,Switzerland/,
+  );
+  assert.doesNotMatch(matchesCsv, /Quarterfinals,[^\n]+,[WL]\d+,/);
+  assert.doesNotMatch(matchesCsv, /Quarterfinals,[^\n]+,[^,\n]+,[WL]\d+$/m);
+});
+
+test("database seed uses confirmed knockout team names", () => {
+  assert.match(
+    seedSql,
+    /\('match-073', 73, 'Round of 32', [^\n]+, 'South Africa', 'Canada'\)/,
+  );
+  assert.match(
+    seedSql,
+    /\('match-089', 89, 'Round of 16', [^\n]+, 'Paraguay', 'France'\)/,
+  );
+  assert.match(
+    seedSql,
+    /\('match-097', 97, 'Quarterfinals', [^\n]+, 'France', 'Morocco'\)/,
+  );
+  assert.doesNotMatch(seedSql, /'Round of 16', [^\n]+, 'W\d+',/);
+  assert.doesNotMatch(seedSql, /'Quarterfinals', [^\n]+, 'W\d+',/);
 });
 
 test("Knockout tab renders knockout matches through the unlocked match card flow", () => {
