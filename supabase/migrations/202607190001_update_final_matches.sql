@@ -4,7 +4,7 @@ set
   team2 = updates.team2
 from (
   values
-    ('match-103', 'France', 'Spain'),
-    ('match-104', 'England', 'Argentina')
+    ('match-103', 'France', 'England'),
+    ('match-104', 'Spain', 'Argentina')
 ) as updates(id, team1, team2)
 where public.matches.id = updates.id;
